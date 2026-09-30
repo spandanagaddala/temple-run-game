@@ -1,0 +1,153 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Random;
+
+/**
+ * Simple Temple Run–style endless runner game in Java Swing.
+ * This is original code — not copied from any copyrighted source.
+ */
+public class TempleRunGame extends JPanel implements ActionListener, KeyListener {
+
+    // Game constants
+    private static final int WIDTH = 800;
+    private static final int HEIGHT = 400;
+    private static final int PLAYER_SIZE = 40;
+    private static final int OBSTACLE_WIDTH = 30;
+    private static final int OBSTACLE_HEIGHT = 60;
+    private static final int GROUND_Y = HEIGHT - 80;
+
+    // Player variables
+    private int playerX = 100;
+    private int playerY = GROUND_Y;
+    private int playerVelocityY = 0;
+    private boolean isJumping = false;
+
+    // Game variables
+    private int score = 0;
+    private boolean gameOver = false;
+    private Timer timer;
+    private ArrayList<Rectangle> obstacles;
+    private Random random;
+
+    public TempleRunGame() {
+        setPreferredSize(new Dimension(WIDTH, HEIGHT));
+        setBackground(Color.BLACK);
+        setFocusable(true);
+        addKeyListener(this);
+
+        obstacles = new ArrayList<>();
+        random = new Random();
+
+        timer = new Timer(20, this); // 50 FPS
+        timer.start();
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (!gameOver) {
+            // Gravity
+            if (isJumping) {
+                playerVelocityY += 1; // gravity effect
+                playerY += playerVelocityY;
+                if (playerY >= GROUND_Y) {
+                    playerY = GROUND_Y;
+                    isJumping = false;
+                    playerVelocityY = 0;
+                }
+            }
+
+            // Move obstacles
+            Iterator<Rectangle> it = obstacles.iterator();
+            while (it.hasNext()) {
+                Rectangle obs = it.next();
+                obs.x -= 5;
+                if (obs.x + OBSTACLE_WIDTH < 0) {
+                    it.remove();
+                    score++;
+                }
+                // Collision detection
+                if (obs.intersects(new Rectangle(playerX, playerY, PLAYER_SIZE, PLAYER_SIZE))) {
+                    gameOver = true;
+                    timer.stop();
+                }
+            }
+
+            // Spawn new obstacles randomly
+            if (random.nextInt(100) < 3) {
+                obstacles.add(new Rectangle(WIDTH, GROUND_Y - OBSTACLE_HEIGHT, OBSTACLE_WIDTH, OBSTACLE_HEIGHT));
+            }
+        }
+        repaint();
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+
+        // Draw ground
+        g.setColor(Color.DARK_GRAY);
+        g.fillRect(0, GROUND_Y + PLAYER_SIZE, WIDTH, HEIGHT - GROUND_Y);
+
+        // Draw player
+        g.setColor(Color.YELLOW);
+        g.fillRect(playerX, playerY, PLAYER_SIZE, PLAYER_SIZE);
+
+        // Draw obstacles
+        g.setColor(Color.RED);
+        for (Rectangle obs : obstacles) {
+            g.fillRect(obs.x, obs.y, obs.width, obs.height);
+        }
+
+        // Draw score
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 20));
+        g.drawString("Score: " + score, 10, 20);
+
+        // Game over message
+        if (gameOver) {
+            g.setFont(new Font("Arial", Font.BOLD, 40));
+            g.setColor(Color.ORANGE);
+            g.drawString("GAME OVER", WIDTH / 2 - 120, HEIGHT / 2);
+        }
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        if (!gameOver && e.getKeyCode() == KeyEvent.VK_SPACE && !isJumping) {
+            isJumping = true;
+            playerVelocityY = -15; // jump force
+        }
+        if (gameOver && e.getKeyCode() == KeyEvent.VK_ENTER) {
+            restartGame();
+        }
+    }
+
+    private void restartGame() {
+        score = 0;
+        playerX = 100;
+        playerY = GROUND_Y;
+        playerVelocityY = 0;
+        isJumping = false;
+        obstacles.clear();
+        gameOver = false;
+        timer.start();
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {}
+    @Override
+    public void keyTyped(KeyEvent e) {}
+
+    public static void main(String[] args) {
+        JFrame frame = new JFrame("Temple Run - Simple Version");
+        TempleRunGame gamePanel = new TempleRunGame();
+        frame.add(gamePanel);
+        frame.pack();
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+    }
+}
